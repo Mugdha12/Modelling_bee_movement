@@ -1,0 +1,170 @@
+---
+title: "Sample"
+output: html_document
+---
+
+```{r, message=FALSE}
+require(knitr)
+opts_chunk$set(eval=TRUE)
+```
+
+```{r}
+Distance <- as.matrix(DistanceMatrix)
+Distance<-subset(Distance, select = -c(Site))
+Distance <- 0.5-Distance
+Roads <- (as.matrix(Roads))
+Roads<-subset(Roads, select = -c(site))
+Roads <- (Roads-1)*-1
+Buildings <- (as.matrix(BuildingsMatrix))
+Buildings<-subset(Buildings, select = -c(Site))
+Buildings <- (Buildings -1)*-1
+Buildings
+Native <- subset(as.matrix(X_Native), select=-c(X1))
+Preferred <- subset(as.matrix(X_Preferred), select=-c(X1))
+Diver <- subset(as.matrix(Diversity), select=-c(X1))
+purple <- subset(as.matrix(Purple_Matrix), select= -c(...1))
+divermat <- 0.02 * Diver 
+```
+
+```{r}
+produceMatrix <- function(removeLocation){
+##This function produces matrix of movement probabilties calculated by combining the other two matrices.
+for (i in (1:ncol(movementProbability)))
+{
+  movementProbability[i,i]=0
+}
+mat <- singleCellEffMatrix
+move <- movementProbability
+
+if(removeLocation >0 && removeLocation < (nrow(probabilty)+1))
+{
+  for(i in (1:nrow(mat)))
+  {
+    move[removeLocation,i]=0.0
+    move[i,removeLocation]=0.0
+  }
+  mat[removeLocation,removeLocation]=0.0
+}
+
+for (i in (1:nrow(mat)))
+{
+  for(j in (1:ncol(mat)))
+  {
+    if(i != j && removeLocation != j && i != removeLocation)
+    {
+      mat[i,j]=(move[i,j]/sum(move[i,]))*(1-singleCellEffMatrix[i,i])
+    }
+  }
+}
+return (mat)
+}
+
+numOfMovements <- function(mat,initialLocation, removeLocation){
+  ##This functions returns the number of movements taken by the bee to reach its initial position after visiting each node.
+  nmovements <- 1
+  probMat <- mat
+  prevLocation <- 0
+  visMat <- matrix(FALSE, nrow=ncol(probMat))
+  hold <- FALSE
+  holdValue <- 0
+  beelocation <- initialLocation
+  visMat[initialLocation]=TRUE
+  if(removeLocation > 0 && removeLocation <=  ncol(probMat))
+  {
+    visMat[removeLocation]=TRUE
+  }
+  while(!hold)
+  {
+    colNum <- 1
+    prev <- 0.0
+    num=runif(1)
+    rowNum=beelocation
+    if(prevLocation == beelocation)
+    {
+      holdValue <- probMat[prevLocation,beelocation]
+      rowSum <- 0
+      for( colNum in (1:ncol(probMat)))
+      {
+        if(colNum != beelocation)
+        {
+          rowSum=rowSum+probMat[beelocation, colNum]
+        }
+      }
+      probMat[prevLocation,beelocation] = (holdValue-holdValue*0.05)
+      sum=1-probMat[prevLocation, beelocation]
+       for( colNum in (1:ncol(probMat)))
+      {
+        if(colNum != beelocation)
+        {
+           res=(sum-rowSum)*(probMat[beelocation,colNum]/rowSum)
+          probMat[beelocation,colNum]=probMat[beelocation,colNum]+res
+        }
+      }
+    }
+     for(colNum in (1:ncol(probMat)) )
+       {
+         sum=prev+probMat[rowNum,colNum]
+         if(num >= prev && num <= sum)
+         {
+           prevLocation = beelocation
+           beelocation <- colNum
+           visMat[beelocation]=TRUE
+            break
+         }
+
+          prev=sum
+      }
+    if(nmovements >= ncol(probMat) & initialLocation == beelocation)
+        {
+          for(i in (1:ncol(probMat)))
+          {
+            if(visMat[i] == FALSE)
+            {
+              hold=FALSE
+              break
+            }
+            hold=TRUE
+          }
+          
+        }
+        nmovements <- nmovements+1
+  }
+  return(nmovements)
+}
+getInitialLocation <- function(removeLocation)
+{ ## This function randomly generates the starting location of the bee
+  
+  locations <- matrix(0L, nrow=ncol(resultMat)-1)
+  for(i in (1:ncol(resultMat)))
+  {
+    if (i != removeLocation)
+    {
+     locations[i]=i
+    }
+    else
+    {
+      locations[i]=i+1
+    }
+  }
+  location <- sample(locations,1)
+  return(location)
+}
+
+singleCellEffMatrix <- 0.5 * PreferredMatrix + 0.4* diversityMatrix + 0.2 * purplePercentMatrix + 0.3 *NativePlantMatrix ##Finding the singleCell matrix by adding up the values of Preferred, diversity, percent of purple and native plant matrices.
+
+movementProbability <- Distance*.85 + Roads*.1+Buildings*.15 ##Finding the total movement probability matrix by adding up the values of roads, buildings and Distance matrices.
+
+removeLocation <- 0 ### The number of site we want to remove
+
+resultMat <- produceMatrix(removeLocation) ## Matrix obtained after the removing the desired site
+
+initialLocation <- getInitialLocation(removeLocation) ## Randomly generating starting location,by considering the removed location.
+
+Efficiency <- replicate(1000, numOfMovements(resultMat,initialLocation,removeLocation)) ## Running the function a 1000 times, and obtained values in Efficiency
+
+mean(Efficiency) ## Finding the mean of total number of movements after running them 1000 times.
+```
+  
+  
+  
+  
